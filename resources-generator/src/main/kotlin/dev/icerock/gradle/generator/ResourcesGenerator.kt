@@ -22,6 +22,7 @@ internal class ResourcesGenerator(
     private val resourcesPackageName: String,
     private val resourcesClassName: String,
     private val sourceSetName: String,
+    private val resourceGenerationNamespace: ResourceGenerationNamespace,
     private val visibilityModifier: KModifier,
     private val sourcesGenerationDir: File,
 ) {
@@ -46,11 +47,16 @@ internal class ResourcesGenerator(
         additionalFileSpecs.addAll(containerGenerator.generateAdditionalFiles(resourcesPackageName))
 
         if (inputMetadata.isEmpty()) {
-            // we not have expect - we should generate simple object
+            // There is no expect object from the dependsOn hierarchy. A test source set still needs
+            // its own object when the associated main compilation already defines the base name.
             generateSimpleResourceObject(
                 ownMetadata = ownMetadata,
                 outputMetadata = outputMetadata,
-                parentObjectName = resourcesClassName,
+                parentObjectName = if (resourceGenerationNamespace.isIsolated) {
+                    resourceGenerationNamespace.qualifyResourceObjectName(resourcesClassName)
+                } else {
+                    resourcesClassName
+                },
                 fileSpec = fileSpec,
                 inputMetadata = inputMetadata,
                 additionalFileSpecs = additionalFileSpecs
@@ -169,10 +175,12 @@ internal class ResourcesGenerator(
         val additionalFileSpecs: MutableList<FileSpec> = mutableListOf()
         additionalFileSpecs.addAll(containerGenerator.generateAdditionalFiles(resourcesPackageName))
 
-        // if previous levels doesn't have resources should use "MR"
-        // but if resources is found, need generate "MRsourceSet" object
-        val expectObjectName: String = if (inputMetadata.isNotEmpty()) {
-            "$resourcesClassName$sourceSetName"
+        // Use the base name only when neither the dependsOn hierarchy nor the associated main
+        // compilation defines resources. Otherwise test and main objects would have the same FQCN.
+        val expectObjectName: String = if (
+            inputMetadata.isNotEmpty() || resourceGenerationNamespace.isIsolated
+        ) {
+            resourceGenerationNamespace.qualifyResourceObjectName(resourcesClassName)
         } else {
             resourcesClassName
         }
