@@ -46,6 +46,7 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.konan.target.KonanTarget
+import java.io.File
 
 @CacheableTask
 abstract class GenerateMultiplatformResourcesTask : DefaultTask() {
@@ -169,12 +170,12 @@ abstract class GenerateMultiplatformResourcesTask : DefaultTask() {
             ListSerializer(ContainerMetadata.serializer())
         // Sort for deterministic output.
         val inputMetadata: List<ContainerMetadata> = readMetadata(
-            files = inputMetadataFiles,
+            files = inputMetadataFiles.files,
             json = json,
             serializer = serializer,
         )
         val requiresResourceNamespaceIsolation: Boolean = readMetadata(
-            files = mainResourceMetadataFiles,
+            files = mainResourceMetadataFiles.files.filter(File::isFile),
             json = json,
             serializer = serializer,
         ).isNotEmpty()
@@ -201,10 +202,10 @@ abstract class GenerateMultiplatformResourcesTask : DefaultTask() {
     }
 
     private fun readMetadata(
-        files: FileCollection,
+        files: Collection<File>,
         json: Json,
         serializer: KSerializer<List<ContainerMetadata>>,
-    ): List<ContainerMetadata> = files.files
+    ): List<ContainerMetadata> = files
         .sortedBy { it.absolutePath }
         .flatMap { file ->
             json.decodeFromString(serializer, file.readText())

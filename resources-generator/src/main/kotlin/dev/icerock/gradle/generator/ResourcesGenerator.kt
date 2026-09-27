@@ -175,11 +175,12 @@ internal class ResourcesGenerator(
         val additionalFileSpecs: MutableList<FileSpec> = mutableListOf()
         additionalFileSpecs.addAll(containerGenerator.generateAdditionalFiles(resourcesPackageName))
 
-        // Use the base name only when neither the dependsOn hierarchy nor the associated main
-        // compilation defines resources. Otherwise test and main objects would have the same FQCN.
-        val expectObjectName: String = if (
-            inputMetadata.isNotEmpty() || resourceGenerationNamespace.isIsolated
-        ) {
+        // Resources below an existing resource hierarchy keep the established source-set suffix.
+        // Namespace isolation adds the same suffix when the associated main compilation defines
+        // resources but this source set has no resource-bearing dependsOn parent.
+        val expectObjectName: String = if (inputMetadata.isNotEmpty()) {
+            "$resourcesClassName$sourceSetName"
+        } else if (resourceGenerationNamespace.isIsolated) {
             resourceGenerationNamespace.qualifyResourceObjectName(resourcesClassName)
         } else {
             resourcesClassName
